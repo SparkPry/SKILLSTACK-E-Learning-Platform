@@ -179,30 +179,12 @@ prevBtn.addEventListener("click", () => {
   renderCards();
 });
 
-// Search functionality
-document.getElementById("SearchInput").addEventListener("keyup", e => {
-  if (e.key === "Enter") {
-    const query = e.target.value.toLowerCase();
-    filteredCourses = allCourses.filter(course =>
-      course.title.toLowerCase().includes(query) ||
-      course.description.toLowerCase().includes(query) ||
-      course.categoryName.toLowerCase().includes(query)
-    );
-    currentPage = 1;
-    totalPages = Math.ceil(filteredCourses.length / cardsPerPage);
-    renderDots();
-    renderCards();
-  }
-});
-
 // Function to update button states (optional)
 function updateButtons() {
   // Add logic if you want to disable buttons at edges (optional)
 }
 
 fetchCourses();
-
-
 
 // =============================================================================
 // DOM elements
@@ -295,7 +277,7 @@ applyFilters.addEventListener("click", function () {
     }
   });
 
-  console.log("Applied Filters:", selectedFilters);
+console.log("Applied Filters:", selectedFilters);
 
   // Visual feedback
   applyFilters.textContent = "Applied!";
@@ -339,3 +321,150 @@ document.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
     }
   });
 });
+
+async function fetchCourses() {
+  try {
+    const url = "https://course-api.istad.co/api/v1/courses?page=0&size=40";
+    const res = await fetch(url);
+    const data = await res.json();
+    allCourses = data.content;
+    filteredCourses = [...allCourses];
+    totalPages = Math.ceil(filteredCourses.length / cardsPerPage);
+    renderDots();
+    renderCards();
+  } catch (err) {
+    console.error("Failed to load courses:", err);
+  }
+}
+
+
+// Search functionality
+document.getElementById("SearchInput").addEventListener("keyup", e => {
+  const query = e.target.value.toLowerCase().trim();
+  
+  // Filter courses based on query
+  if (query === "") {
+    // Show all courses if search is empty
+    filteredCourses = [...allCourses];
+  } else {
+    filteredCourses = allCourses.filter(course =>
+      course.title.toLowerCase().includes(query) ||
+      course.description.toLowerCase().includes(query) ||
+      course.categoryName.toLowerCase().includes(query)
+    );
+  }
+  
+  // Reset to first page and recalculate pagination
+  currentPage = 1;
+  totalPages = Math.ceil(filteredCourses.length / cardsPerPage);
+  
+  // Re-render everything
+  renderDots();
+  renderCards();
+  
+  // Log for debugging
+  console.log(`Search query: "${query}"`);
+  console.log(`Found ${filteredCourses.length} courses`);
+});
+
+//apply filter
+applyFilters.addEventListener("click", function () {
+  const selectedFilters = {
+    categories: [],
+    levels: [],
+    priceRange: priceRange.value,
+    ratings: [],
+  };
+
+  // Collect category filters
+  document
+    .querySelectorAll(
+      'input[value="development"], input[value="business"], input[value="design"], input[value="marketing"], input[value="data-science"], input[value="it-software"]'
+    )
+    .forEach((checkbox) => {
+      if (checkbox.checked) {
+        selectedFilters.categories.push(checkbox.value);
+      }
+    });
+
+  // Collect level filters
+  document
+    .querySelectorAll(
+      'input[value="beginner"], input[value="intermediate"], input[value="advanced"], input[value="all-levels"]'
+    )
+    .forEach((checkbox) => {
+      if (checkbox.checked) {
+        selectedFilters.levels.push(checkbox.value);
+      }
+    });
+
+  // Collect rating filters
+  document.querySelectorAll('input[value$="-stars"]').forEach((checkbox) => {
+    if (checkbox.checked) {
+      selectedFilters.ratings.push(checkbox.value);
+    }
+  });
+
+  // Apply filters to allCourses (similar to search functionality)
+  filteredCourses = allCourses.filter(course => {
+    // Category filter
+    const categoryMatch = selectedFilters.categories.length === 0 || 
+      selectedFilters.categories.some(category => 
+        course.categoryName.toLowerCase().includes(category.toLowerCase())
+      );
+
+    // Level filter (adjust based on your course data structure)
+    const levelMatch = selectedFilters.levels.length === 0 || 
+      selectedFilters.levels.some(level => {
+        // Assuming you have a level field in course object
+        // Adjust this based on your actual course data structure
+        return course.level && course.level.toLowerCase() === level.toLowerCase();
+      });
+
+    // Price filter (adjust based on your course data structure)
+    const priceMatch = !selectedFilters.priceRange || 
+      (course.price && course.price <= selectedFilters.priceRange);
+
+    // Rating filter (adjust based on your course data structure)
+    const ratingMatch = selectedFilters.ratings.length === 0 || 
+      selectedFilters.ratings.some(rating => {
+        const ratingValue = parseInt(rating.split('-')[0]);
+        return course.rating && course.rating >= ratingValue;
+      });
+
+    return categoryMatch && levelMatch && priceMatch && ratingMatch;
+  });
+
+  // Update pagination and render (same as search)
+  currentPage = 1;
+  totalPages = Math.ceil(filteredCourses.length / cardsPerPage);
+  renderDots();
+  renderCards();
+});
+
+// Optional: Add a reset filters function
+function resetFilters() {
+  // Clear all checkboxes
+  document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  
+  // Reset price range if it's a slider/input
+  if (priceRange) {
+    priceRange.value = priceRange.max || 1000; // adjust default value as needed
+  }
+  
+  // Reset to show all courses
+  filteredCourses = [...allCourses];
+  currentPage = 1;
+  totalPages = Math.ceil(filteredCourses.length / cardsPerPage);
+  renderDots();
+  renderCards();
+}
+
+// Function to update button states (optional)
+function updateButtons() {
+  // Add logic if you want to disable buttons at edges (optional)
+}
+// Initialize
+fetchCourses();
